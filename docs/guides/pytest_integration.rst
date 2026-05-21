@@ -3,8 +3,9 @@ pytest integration
 
 qtest ships as a real :mod:`pytest` plugin. Installing ``qtest`` is the
 *only* thing you need to do — the plugin auto-registers via its
-``pytest11`` entry point, fixtures become discoverable in every test,
-and three CLI flags appear under ``pytest --help``.
+``pytest11`` entry point, three CLI flags appear under ``pytest --help``,
+and the bundled circuit fixtures become available once you enable
+them in your ``conftest.py``.
 
 .. contents:: On this page
    :local:
@@ -24,7 +25,7 @@ The plugin exposes three knobs that apply to the entire test session:
      - Effect
    * - ``--qtest-shots``
      - 1024
-     - Default shot count for ``qtest_backend.run`` and friends.
+     - Default shot count for the assertion-internal backend run.
    * - ``--qtest-tolerance``
      - 0.05
      - Default total-variation tolerance for
@@ -47,42 +48,22 @@ You can also set those values once-per-project in ``pyproject.toml``:
 
 .. code-block:: toml
 
-   [tool.pytest.ini_options]
-   addopts = "--qtest-shots=4096 --qtest-tolerance=0.03 --qtest-seed=42"
+   [tool.qtest]
+   shots = 4096
+   tolerance = 0.03
+   seed = 42
 
-Built-in fixtures
------------------
+The plugin reads ``[tool.qtest]`` at session start and CLI flags
+override file settings.
 
-.. list-table::
-   :header-rows: 1
-   :widths: 22 78
+Built-in circuit fixtures
+-------------------------
 
-   * - Fixture
-     - Yields
-   * - ``qtest_backend``
-     - The default :class:`~qtest.backends.Backend` instance, seeded from
-       ``--qtest-seed``.
-   * - ``qtest_shots``
-     - The current value of ``--qtest-shots`` as an :class:`int`.
-   * - ``qtest_tolerance``
-     - The current value of ``--qtest-tolerance`` as a :class:`float`.
-   * - ``qtest_seed``
-     - The current value of ``--qtest-seed``.
-   * - ``bell_circuit``
-     - A 2-qubit Bell-state circuit (registered via
-       :mod:`qtest.fixtures.common_states`).
-   * - ``ghz_circuit``
-     - A factory yielding GHZ circuits of any qubit count.
-   * - ``plus_circuit``, ``minus_circuit``, ``w_circuit``
-     - Single-qubit and W-state reference circuits.
-   * - ``hadamards``
-     - An :math:`n`-qubit all-Hadamard circuit.
-   * - ``random_clifford_circuit``
-     - A factory yielding seeded random Clifford circuits.
-
-The state and gate fixtures are exposed via two plugin modules. To make
-them discoverable in your suite, list them under ``pytest_plugins`` in
-your top-level ``conftest.py``:
+The fixtures live in two modules — ``qtest.fixtures.common_states``
+for state-preparation circuits and ``qtest.fixtures.common_gates`` for
+gate-layer factories. They are **plain pytest plugins**, so you enable
+them by listing the modules under ``pytest_plugins`` in your top-level
+``conftest.py``:
 
 .. code-block:: python
 
@@ -92,8 +73,32 @@ your top-level ``conftest.py``:
        "qtest.fixtures.common_gates",
    ]
 
-The ``qtest_backend`` fixture, the CLI flags, and the seeding fixtures
-are always available — no ``pytest_plugins`` entry needed.
+Once that one line is in place, every test in the suite can pull in
+any of these fixtures by simply naming them as a parameter:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 78
+
+   * - Fixture
+     - Yields
+   * - ``bell_state``
+     - A 2-qubit Bell-state preparation circuit.
+   * - ``plus_state``
+     - A 1-qubit :math:`|+\rangle` preparation circuit.
+   * - ``minus_state``
+     - A 1-qubit :math:`|-\rangle` preparation circuit.
+   * - ``ghz_state``
+     - Factory ``n -> QuantumCircuit`` for an :math:`n`-qubit GHZ state.
+   * - ``ghz_3`` / ``ghz_4`` / ``ghz_5``
+     - Shortcuts for 3-, 4-, and 5-qubit GHZ circuits.
+   * - ``w_state``
+     - Factory ``n -> QuantumCircuit`` for an :math:`n`-qubit W state.
+   * - ``hadamard_circuit``
+     - Factory ``n -> QuantumCircuit`` for an :math:`n`-qubit
+       all-Hadamard circuit.
+   * - ``random_clifford``
+     - Factory yielding a seeded random Clifford circuit.
 
 Using the fixtures together
 ---------------------------
@@ -102,16 +107,31 @@ Using the fixtures together
 
    from qtest import assert_distribution_close
 
-   def test_bell_is_balanced(qtest_backend, bell_circuit, qtest_shots, qtest_tolerance):
-       counts = qtest_backend.run(bell_circuit, shots=qtest_shots)
+   def test_bell_is_balanced(bell_state):
+       # bell_state already has H + CNOT applied; we just need to measure.
+       qc = bell_state.copy()
+       qc.measure_all()
        assert_distribution_close(
-           counts,
+           qc,
            expected={"00": 0.5, "11": 0.5},
-           tolerance=qtest_tolerance,
+           shots=4096,
+           tolerance=0.03,
        )
 
-This test now respects whatever shot count and tolerance the user passed
-on the command line, with sensible defaults if they passed none.
+   def test_ghz_is_balanced(ghz_5):
+       qc = ghz_5.copy()
+       qc.measure_all()
+       assert_distribution_close(
+           qc,
+           expected={"00000": 0.5, "11111": 0.5},
+           shots=4096,
+           tolerance=0.03,
+       )
+
+   def test_random_clifford_is_unitary(random_clifford):
+       from qtest import assert_unitary
+       qc = random_clifford(num_qubits=4, depth=10, seed=42)
+       assert_unitary(qc, tolerance=1e-9)
 
 Markers
 -------
@@ -144,16 +164,12 @@ Reproducibility
 ---------------
 
 The single most useful thing the plugin does for you is make runs
-reproducible. When ``--qtest-seed`` is set:
-
-1. The ``qtest_backend`` fixture seeds its RNG with that value.
-2. Every fixture that constructs a *random* circuit (e.g.
-   ``random_clifford_circuit``) derives its seed from the same root.
-3. Hypothesis is told to use a deterministic database for any property
-   tests in the session.
-
-The net effect: a passing run on your laptop is bit-for-bit identical to
-the CI run, so flakes are real flakes, not seed drift.
+reproducible. When ``--qtest-seed`` is set, every assertion that
+needs randomness (the default backend's RNG, the sampling-based
+modes of :func:`~qtest.assert_circuit_equivalent`) is seeded from
+the same root. The net effect: a passing run on your laptop is
+bit-for-bit identical to the CI run, so flakes are real flakes,
+not seed drift.
 
 CI configuration recipes
 ------------------------

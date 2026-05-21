@@ -40,17 +40,16 @@ Write your first quantum test — a Bell state should produce a 50/50 distributi
 from qiskit import QuantumCircuit
 from qtest import assert_distribution_close
 
-def test_bell_state_is_balanced(qtest_backend):
-    qc = QuantumCircuit(2, 2)
+def test_bell_state_is_balanced():
+    qc = QuantumCircuit(2)
     qc.h(0)
     qc.cx(0, 1)
-    qc.measure([0, 1], [0, 1])
-
-    counts = qtest_backend.run(qc, shots=4096)
+    qc.measure_all()
 
     assert_distribution_close(
-        counts,
+        qc,
         expected={"00": 0.5, "11": 0.5},
+        shots=4096,
         tolerance=0.03,
     )
 ```
@@ -80,7 +79,7 @@ That's it. No mocking, no manual shot-count math, no hand-rolled tolerance check
 - **Property-based testing for circuits.** Ready-made Hypothesis strategies for random circuits, gates, state vectors, and Haar-random unitaries.
 - **Backend-agnostic by design.** Ships with a Qiskit backend today; the `Backend` protocol is built so Cirq and PennyLane adapters slot in cleanly.
 - **Deterministic by default.** A controlled seed pipeline means a test that passes locally passes on CI.
-- **Zero ceremony fixtures.** `qtest_backend`, `bell_circuit`, `ghz_circuit`, and `qft_circuit` come included.
+- **Zero ceremony fixtures.** `bell_state`, `plus_state`, `minus_state`, `ghz_3` / `ghz_4` / `ghz_5`, `hadamard_circuit`, and `random_clifford` come included.
 
 ---
 
@@ -91,29 +90,31 @@ That's it. No mocking, no manual shot-count math, no hand-rolled tolerance check
 ```python
 import numpy as np
 from qiskit import QuantumCircuit
-from qiskit.quantum_info import Statevector
 from qtest import assert_state_close
 
 def test_hadamard_produces_plus_state():
     qc = QuantumCircuit(1)
     qc.h(0)
 
-    actual = Statevector(qc)
     expected = np.array([1, 1]) / np.sqrt(2)
+    assert_state_close(qc, expected_state=expected, tolerance=1e-9)
 
-    assert_state_close(actual, expected, fidelity_threshold=0.999)
+    # qtest also ships a named state library, so the line below is
+    # equivalent — global phase is ignored by default.
+    assert_state_close(qc, expected_state="plus", tolerance=1e-9)
 ```
 
 ### Property-based testing with Hypothesis
 
 ```python
-from hypothesis import given
+from hypothesis import given, settings
 from qtest import assert_unitary
-from qtest.strategies import random_circuits
+from qtest.strategies import quantum_circuits
 
-@given(circuit=random_circuits(num_qubits=3, depth=10))
+@given(circuit=quantum_circuits(min_qubits=2, max_qubits=4, max_depth=10))
+@settings(deadline=None, max_examples=50)
 def test_any_circuit_is_unitary(circuit):
-    assert_unitary(circuit, atol=1e-9)
+    assert_unitary(circuit, tolerance=1e-9)
 ```
 
 ### Custom tolerance per test
@@ -126,9 +127,12 @@ def test_optimizer_preserves_semantics(original_circuit, optimized_circuit):
         original_circuit,
         optimized_circuit,
         tolerance=1e-7,
-        ignore_global_phase=True,
     )
 ```
+
+`assert_circuit_equivalent` compares the two circuits' unitaries via
+process fidelity, which is global-phase-insensitive by default — no extra
+flag needed.
 
 You can also set tolerance globally for an entire run:
 
@@ -146,10 +150,16 @@ Standard install from PyPI:
 pip install qtest
 ```
 
-With the Qiskit backend (recommended starter setup):
+With Hypothesis (property-based testing) and Aer (high-performance simulator):
 
 ```bash
-pip install "qtest[qiskit]"
+pip install "qtest[hypothesis,aer]"
+```
+
+Or pull in every optional dependency in one go:
+
+```bash
+pip install "qtest[all]"
 ```
 
 For development — clone the repo and install in editable mode with the dev extras:
@@ -164,7 +174,7 @@ pre-commit install
 pytest
 ```
 
-Supported Python versions: **3.10, 3.11, 3.12**.
+Supported Python versions: **3.9, 3.10, 3.11, 3.12**.
 
 ---
 
@@ -202,7 +212,7 @@ If `qtest` supports your research, please cite it:
   author  = {Tuncbilek, Metin},
   title   = {qtest: Statistical, pytest-native testing for quantum circuits},
   year    = {2026},
-  url     = {https://github.com/<metin-5115>/qtest}
+  url     = {https://github.com/metin-5115/qtest}
 }
 ```
 

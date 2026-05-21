@@ -50,10 +50,10 @@ representation. Hypothesis makes that one-liner:
    from qtest import assert_unitary
    from qtest.strategies import quantum_circuits
 
-   @given(qc=quantum_circuits(min_qubits=2, max_qubits=4, max_depth=8))
+   @given(circuit=quantum_circuits(min_qubits=2, max_qubits=4, max_depth=8))
    @settings(deadline=None, max_examples=50)
-   def test_random_circuits_are_unitary(qc):
-       assert_unitary(qc, tolerance=1e-9)
+   def test_random_circuits_are_unitary(circuit):
+       assert_unitary(circuit, tolerance=1e-9)
 
 The ``deadline=None`` matters: Hypothesis' default per-example deadline
 is 200 ms, which random circuit simulation can blow past for larger
@@ -66,19 +66,16 @@ Reversibility — a circuit composed with its inverse is the identity
 .. code-block:: python
 
    from hypothesis import given, settings
+   from qiskit import QuantumCircuit
+   from qtest import assert_circuit_equivalent
    from qtest.strategies import quantum_circuits
 
-   @given(qc=quantum_circuits(min_qubits=1, max_qubits=3, max_depth=6))
+   @given(circuit=quantum_circuits(min_qubits=1, max_qubits=3, max_depth=6))
    @settings(deadline=None, max_examples=30)
-   def test_circuit_inverse_round_trip(qc):
-       round_trip = qc.compose(qc.inverse())
-       # round_trip should implement the identity up to global phase
-       from qiskit.quantum_info import Operator
-       import numpy as np
-       U = Operator(round_trip).data
-       I = np.eye(U.shape[0])
-       # Phase-insensitive comparison: |U_ij| should match |I_ij|
-       assert np.allclose(np.abs(U), np.abs(I), atol=1e-9)
+   def test_circuit_inverse_round_trip(circuit):
+       round_trip = circuit.compose(circuit.inverse())
+       identity = QuantumCircuit(circuit.num_qubits)  # empty == identity
+       assert_circuit_equivalent(round_trip, identity, tolerance=1e-9)
 
 When Hypothesis finds a counter-example it will *shrink* it — the failing
 circuit you actually see is typically the smallest circuit, in qubits
@@ -124,8 +121,8 @@ A few defaults are worth overriding for quantum properties:
    )
 
    @QUANTUM
-   @given(qc=quantum_circuits(min_qubits=2, max_qubits=4))
-   def test_whatever(qc):
+   @given(circuit=quantum_circuits(min_qubits=2, max_qubits=4))
+   def test_whatever(circuit):
        ...
 
 For long-running CI properties, register a Hypothesis profile (e.g.

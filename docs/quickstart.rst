@@ -32,17 +32,16 @@ tolerance, not an exact count.
    from qiskit import QuantumCircuit
    from qtest import assert_distribution_close
 
-   def test_bell_state_is_balanced(qtest_backend):
-       qc = QuantumCircuit(2, 2)
+   def test_bell_state_is_balanced():
+       qc = QuantumCircuit(2)
        qc.h(0)
        qc.cx(0, 1)
-       qc.measure([0, 1], [0, 1])
-
-       counts = qtest_backend.run(qc, shots=4096)
+       qc.measure_all()
 
        assert_distribution_close(
-           counts,
+           qc,
            expected={"00": 0.5, "11": 0.5},
+           shots=4096,
            tolerance=0.03,
        )
 
@@ -52,8 +51,9 @@ Run it:
 
    pytest test_bell.py -v
 
-``qtest_backend`` is a fixture supplied by qtest's pytest plugin — no
-``conftest.py`` plumbing required.
+No mocking, no manual backend setup — ``assert_distribution_close``
+runs the circuit on qtest's default backend internally, with the seed
+and tolerance configured via the pytest plugin's CLI flags.
 
 Asserting on state vectors
 --------------------------
@@ -64,16 +64,15 @@ sampling. :func:`qtest.assert_state_close` handles global phase for you.
 .. code-block:: python
 
    from qiskit import QuantumCircuit
-   from qiskit.quantum_info import Statevector
    from qtest import assert_state_close
 
    def test_hadamard_produces_plus_state():
        qc = QuantumCircuit(1)
        qc.h(0)
 
-       psi = Statevector.from_instruction(qc)
-
-       assert_state_close(psi, expected="plus", tolerance=1e-10)
+       # Named reference states ("plus", "minus", "bell", ...) are
+       # built in. Global phase is ignored by default.
+       assert_state_close(qc, expected_state="plus", tolerance=1e-10)
 
 Verifying that two circuits are equivalent
 ------------------------------------------
@@ -111,10 +110,10 @@ random circuits at once.
    from qtest import assert_unitary
    from qtest.strategies import quantum_circuits
 
-   @given(qc=quantum_circuits(min_qubits=2, max_qubits=4, max_depth=8))
+   @given(circuit=quantum_circuits(min_qubits=2, max_qubits=4, max_depth=8))
    @settings(deadline=None, max_examples=50)
-   def test_any_unitary_circuit_is_unitary(qc):
-       assert_unitary(qc, tolerance=1e-9)
+   def test_any_unitary_circuit_is_unitary(circuit):
+       assert_unitary(circuit, tolerance=1e-9)
 
 That single test executes against dozens of random unitary circuits per
 run. When it fails, Hypothesis shrinks the failing circuit to the

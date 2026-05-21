@@ -64,17 +64,16 @@ distribution over ``00`` and ``11``:
    from qiskit import QuantumCircuit
    from qtest import assert_distribution_close
 
-   def test_bell_state_is_balanced(qtest_backend):
-       qc = QuantumCircuit(2, 2)
+   def test_bell_state_is_balanced():
+       qc = QuantumCircuit(2)
        qc.h(0)
        qc.cx(0, 1)
-       qc.measure([0, 1], [0, 1])
-
-       counts = qtest_backend.run(qc, shots=4096)
+       qc.measure_all()
 
        assert_distribution_close(
-           counts,
+           qc,
            expected={"00": 0.5, "11": 0.5},
+           shots=4096,
            tolerance=0.03,
        )
 

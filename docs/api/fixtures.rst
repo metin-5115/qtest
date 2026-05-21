@@ -14,42 +14,57 @@ plugin modules under ``pytest_plugins`` in your top-level
        "qtest.fixtures.common_gates",
    ]
 
-.. currentmodule:: qtest.fixtures
+State-preparation fixtures
+--------------------------
 
-Public API
-----------
+.. currentmodule:: qtest.fixtures.common_states
 
 .. autosummary::
    :nosignatures:
 
-   bell_circuit
-   ghz_circuit
-   plus_circuit
-   minus_circuit
-   w_circuit
-   hadamards
-   random_clifford_circuit
-
-Reference
----------
-
-.. automodule:: qtest.fixtures
-   :members:
-   :show-inheritance:
-   :member-order: bysource
-
-Common states
-~~~~~~~~~~~~~
+   bell_state
+   plus_state
+   minus_state
+   ghz_state
+   ghz_3
+   ghz_4
+   ghz_5
+   w_state
 
 .. automodule:: qtest.fixtures.common_states
    :members:
    :show-inheritance:
    :member-order: bysource
 
-Common gates
-~~~~~~~~~~~~
+Gate-layer fixtures
+-------------------
+
+.. currentmodule:: qtest.fixtures.common_gates
+
+.. autosummary::
+   :nosignatures:
+
+   hadamard_circuit
+   random_clifford
 
 .. automodule:: qtest.fixtures.common_gates
+   :members:
+   :show-inheritance:
+   :member-order: bysource
+
+Plain factories (no pytest required)
+------------------------------------
+
+The state and gate builders are also exposed as plain factory
+functions via the :mod:`qtest.fixtures` package — usable in scripts,
+notebooks, or any non-pytest context::
+
+   from qtest.fixtures import bell_circuit, ghz_circuit
+
+   qc = bell_circuit()
+   ghz5 = ghz_circuit(5)
+
+.. automodule:: qtest.fixtures
    :members:
    :show-inheritance:
    :member-order: bysource

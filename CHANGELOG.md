@@ -42,9 +42,11 @@ The first public alpha of qtest.
 - **Pytest plugin** (`qtest.plugin`):
   - CLI flags `--qtest-shots`, `--qtest-tolerance`, `--qtest-seed`.
   - Markers `slow` and `hardware`.
-- **Bundled fixtures** (`qtest.fixtures`):
-  - `bell_circuit`, `ghz_circuit`, `plus_circuit`, `minus_circuit`,
-    `w_circuit`, `hadamards`, `random_clifford_circuit`.
+- **Bundled pytest fixtures** (`qtest.fixtures.common_states`,
+  `qtest.fixtures.common_gates`):
+  - `bell_state`, `plus_state`, `minus_state`, `ghz_state` factory,
+    `ghz_3`, `ghz_4`, `ghz_5`, `w_state` factory, `hadamard_circuit`
+    factory, `random_clifford` factory.
 - **Hypothesis strategies** (`qtest.strategies`, optional extra):
   - `quantum_circuits`, `random_gates`, `pauli_strings`,
     `random_states`, `product_states`, `random_density_matrices`.

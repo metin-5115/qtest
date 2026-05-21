@@ -50,8 +50,12 @@ differ.
 
    from qtest import assert_distribution_close
 
-   counts = qtest_backend.run(qc, shots=4096)
-   assert_distribution_close(counts, {"0": 0.5, "1": 0.5}, tolerance=0.03)
+   # ``assert_distribution_close`` runs the circuit internally on
+   # qtest's default backend — you pass the circuit, not pre-computed
+   # counts.
+   assert_distribution_close(
+       qc, expected={"0": 0.5, "1": 0.5}, shots=4096, tolerance=0.03
+   )
 
 **State-vector assertions** — :func:`~qtest.assert_state_close` — work on
 exact :class:`~qiskit.quantum_info.Statevector` objects. They support
@@ -61,11 +65,11 @@ tests where you don't want shot-noise variance.
 
 .. code-block:: python
 
-   from qiskit.quantum_info import Statevector
    from qtest import assert_state_close
 
-   psi = Statevector.from_instruction(qc)
-   assert_state_close(psi, expected="plus", tolerance=1e-10)
+   # Pass the circuit directly — qtest computes the state vector for
+   # you. Named reference states make tight, readable gate tests.
+   assert_state_close(qc, expected_state="plus", tolerance=1e-10)
 
 Choosing a tolerance
 --------------------
@@ -117,8 +121,8 @@ Two state vectors :math:`\lvert\psi\rangle` and
 measurement on them returns the same statistics. qtest's state and
 unitary assertions are global-phase-insensitive by default, computing
 :math:`1 - |\langle\psi_1|\psi_2\rangle|^2` (infidelity) rather than the
-raw L2 distance. You can pass ``method="l2"`` to opt out if you really
-do care about phase.
+raw L2 distance. Pass ``global_phase=False`` to
+:func:`~qtest.assert_state_close` if you really do care about phase.
 
 Where to go next
 ----------------
