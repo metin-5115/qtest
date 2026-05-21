@@ -1,0 +1,183 @@
+pytest integration
+==================
+
+qtest ships as a real :mod:`pytest` plugin. Installing ``qtest`` is the
+*only* thing you need to do — the plugin auto-registers via its
+``pytest11`` entry point, fixtures become discoverable in every test,
+and three CLI flags appear under ``pytest --help``.
+
+.. contents:: On this page
+   :local:
+   :depth: 1
+
+CLI flags
+---------
+
+The plugin exposes three knobs that apply to the entire test session:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 25 50
+
+   * - Flag
+     - Default
+     - Effect
+   * - ``--qtest-shots``
+     - 1024
+     - Default shot count for ``qtest_backend.run`` and friends.
+   * - ``--qtest-tolerance``
+     - 0.05
+     - Default total-variation tolerance for
+       :func:`~qtest.assert_distribution_close`.
+   * - ``--qtest-seed``
+     - System entropy
+     - Master seed for the backend RNG; identical seeds → identical
+       sample sequences.
+
+A typical CI invocation:
+
+.. code-block:: bash
+
+   pytest -v \
+       --qtest-shots 8192 \
+       --qtest-tolerance 0.02 \
+       --qtest-seed 12345
+
+You can also set those values once-per-project in ``pyproject.toml``:
+
+.. code-block:: toml
+
+   [tool.pytest.ini_options]
+   addopts = "--qtest-shots=4096 --qtest-tolerance=0.03 --qtest-seed=42"
+
+Built-in fixtures
+-----------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 78
+
+   * - Fixture
+     - Yields
+   * - ``qtest_backend``
+     - The default :class:`~qtest.backends.Backend` instance, seeded from
+       ``--qtest-seed``.
+   * - ``qtest_shots``
+     - The current value of ``--qtest-shots`` as an :class:`int`.
+   * - ``qtest_tolerance``
+     - The current value of ``--qtest-tolerance`` as a :class:`float`.
+   * - ``qtest_seed``
+     - The current value of ``--qtest-seed``.
+   * - ``bell_circuit``
+     - A 2-qubit Bell-state circuit (registered via
+       :mod:`qtest.fixtures.common_states`).
+   * - ``ghz_circuit``
+     - A factory yielding GHZ circuits of any qubit count.
+   * - ``plus_circuit``, ``minus_circuit``, ``w_circuit``
+     - Single-qubit and W-state reference circuits.
+   * - ``hadamards``
+     - An :math:`n`-qubit all-Hadamard circuit.
+   * - ``random_clifford_circuit``
+     - A factory yielding seeded random Clifford circuits.
+
+The state and gate fixtures are exposed via two plugin modules. To make
+them discoverable in your suite, list them under ``pytest_plugins`` in
+your top-level ``conftest.py``:
+
+.. code-block:: python
+
+   # tests/conftest.py
+   pytest_plugins = [
+       "qtest.fixtures.common_states",
+       "qtest.fixtures.common_gates",
+   ]
+
+The ``qtest_backend`` fixture, the CLI flags, and the seeding fixtures
+are always available — no ``pytest_plugins`` entry needed.
+
+Using the fixtures together
+---------------------------
+
+.. code-block:: python
+
+   from qtest import assert_distribution_close
+
+   def test_bell_is_balanced(qtest_backend, bell_circuit, qtest_shots, qtest_tolerance):
+       counts = qtest_backend.run(bell_circuit, shots=qtest_shots)
+       assert_distribution_close(
+           counts,
+           expected={"00": 0.5, "11": 0.5},
+           tolerance=qtest_tolerance,
+       )
+
+This test now respects whatever shot count and tolerance the user passed
+on the command line, with sensible defaults if they passed none.
+
+Markers
+-------
+
+qtest registers two pytest markers you can use to gate tests:
+
+.. code-block:: python
+
+   import pytest
+
+   @pytest.mark.slow
+   def test_high_shot_property(): ...
+
+   @pytest.mark.hardware
+   def test_real_qpu(): ...
+
+Run only the fast tests during local development:
+
+.. code-block:: bash
+
+   pytest -m "not slow"
+
+Or filter out hardware tests when you're offline:
+
+.. code-block:: bash
+
+   pytest -m "not hardware"
+
+Reproducibility
+---------------
+
+The single most useful thing the plugin does for you is make runs
+reproducible. When ``--qtest-seed`` is set:
+
+1. The ``qtest_backend`` fixture seeds its RNG with that value.
+2. Every fixture that constructs a *random* circuit (e.g.
+   ``random_clifford_circuit``) derives its seed from the same root.
+3. Hypothesis is told to use a deterministic database for any property
+   tests in the session.
+
+The net effect: a passing run on your laptop is bit-for-bit identical to
+the CI run, so flakes are real flakes, not seed drift.
+
+CI configuration recipes
+------------------------
+
+A pragmatic split:
+
+.. code-block:: yaml
+
+   # .github/workflows/ci.yml — excerpt
+   - name: Fast tests
+     run: pytest -m "not slow" --qtest-shots 1024 --qtest-tolerance 0.05
+
+   - name: Slow tests
+     run: pytest -m "slow" --qtest-shots 8192 --qtest-tolerance 0.02
+     if: github.event_name == 'schedule'
+
+PR runs stay snappy; the nightly build runs the precise, shot-heavy
+properties.
+
+Where to go next
+----------------
+
+* :doc:`writing_assertions` — the assertions these fixtures feed into.
+* :doc:`property_testing` — how the slow markers and high shot counts
+  play with Hypothesis profiles.
+* :doc:`../api/fixtures` — the full autogenerated reference for every
+  bundled fixture.

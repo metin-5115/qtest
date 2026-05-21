@@ -1,0 +1,16 @@
+# Documentation build requirements.
+# Used by Read the Docs (.readthedocs.yaml) and for local doc builds.
+#
+# Install with:
+#     pip install -r docs/requirements.txt
+#
+# Keep this in sync with the [project.optional-dependencies] docs extra
+# in pyproject.toml.
+
+sphinx>=7.0
+furo>=2024.1
+sphinx-autobuild>=2024.2
+sphinx-copybutton>=0.5
+sphinx-design>=0.5
+myst-parser>=2.0
+sphinxcontrib-bibtex>=2.6

@@ -1,0 +1,184 @@
+# ============================================================================
+#  qtest — Release Workflow
+#  Triggered when a GitHub Release is published. Runs the test matrix, builds
+#  the distribution, publishes to PyPI via Trusted Publishing (OIDC), and
+#  attaches the built artifacts to the GitHub Release page.
+#
+#  ONE-TIME PYPI SETUP (Trusted Publishing — no API token needed):
+#  ---------------------------------------------------------------
+#  1. Log in to https://pypi.org and either:
+#       - create the "qtest" project, OR
+#       - if the project does not yet exist, add it as a *pending* publisher.
+#  2. Open the project's "Publishing" page and add a Trusted Publisher with:
+#       Owner:               <your-github-username>
+#       Repository name:     qtest
+#       Workflow filename:   release.yml
+#       Environment name:    pypi
+#  3. (Recommended) Repeat on https://test.pypi.org for the "testpypi"
+#     environment to dry-run releases before hitting real PyPI.
+#  4. In this repository, create two protected environments under
+#     Settings -> Environments:
+#       - "pypi"      (used for production releases)
+#       - "testpypi"  (used for the optional dry-run job below)
+#     Add required reviewers / wait timers as desired.
+#  5. No secrets need to be stored. OIDC handles short-lived credentials.
+# ============================================================================
+
+name: Release
+
+on:
+  release:
+    types: [published]              # fires when a GitHub Release moves out of draft
+  workflow_dispatch:                # also allow manual runs from the Actions tab
+
+# Releases should never overlap with themselves.
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false         # never cancel an in-flight publish
+
+permissions:
+  contents: read                    # individual jobs widen this as needed
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  FORCE_COLOR: "1"
+
+jobs:
+  # --------------------------------------------------------------------------
+  # 1. Test — re-run the suite against the exact tagged commit before shipping.
+  #    Kept inline (rather than calling ci.yml as a reusable workflow) so a
+  #    release never silently depends on the state of the default branch.
+  # --------------------------------------------------------------------------
+  test:
+    name: Test (Python ${{ matrix.python-version }} on ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: true                # halt the release immediately if any cell fails
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout the released tag
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install qtest with dev + hypothesis + aer extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,hypothesis,aer]"
+
+      - name: Run pytest
+        run: pytest -ra
+
+  # --------------------------------------------------------------------------
+  # 2. Build — sdist + wheel from the released tag.
+  # --------------------------------------------------------------------------
+  build:
+    name: Build sdist + wheel
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout the released tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Verify distributions with twine
+        run: twine check dist/*
+
+      - name: Upload distributions for downstream jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  # --------------------------------------------------------------------------
+  # 3. Publish to PyPI via Trusted Publishing (OIDC).
+  #    No API token in secrets — PyPI verifies this workflow's OIDC token.
+  # --------------------------------------------------------------------------
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    environment:
+      name: pypi
+      url: https://pypi.org/project/qtest/
+
+    permissions:
+      id-token: write                # REQUIRED for PyPI Trusted Publishing (OIDC)
+
+    steps:
+      - name: Download built distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+          # repository-url defaults to https://upload.pypi.org/legacy/
+          print-hash: true
+          verbose: true
+
+  # --------------------------------------------------------------------------
+  # 4. Attach built distributions to the GitHub Release page.
+  # --------------------------------------------------------------------------
+  attach-to-release:
+    name: Attach artifacts to GitHub Release
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    if: github.event_name == 'release'
+
+    permissions:
+      contents: write                # required to upload assets to the release
+
+    steps:
+      - name: Download built distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Upload sdist and wheel to the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.whl
+          fail_on_unmatched_files: true
+          token: ${{ secrets.GITHUB_TOKEN }}
