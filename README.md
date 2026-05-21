@@ -7,7 +7,7 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/qtest.svg)](https://pypi.org/project/qtest/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey.svg)](https://github.com/metin-5115/qtest)
-[![Documentation Status](https://readthedocs.org/projects/qtest/badge/?version=latest)](https://qtest.readthedocs.io)
+[![Documentation Status](https://readthedocs.org/projects/qtest-quantum/badge/?version=latest)](https://qtest-quantum.readthedocs.io)
 
 `qtest` is an open-source Python library that brings the discipline of modern software testing to quantum programs. It plugs straight into `pytest`, gives you statistical assertions designed for noisy and probabilistic outputs, and integrates with Hypothesis so you can do property-based testing on quantum circuits — without writing a single line of plumbing.
 
@@ -180,14 +180,14 @@ Supported Python versions: **3.9, 3.10, 3.11, 3.12**.
 
 ## Documentation
 
-Full documentation, API reference, and guides live at **[qtest.readthedocs.io](https://qtest.readthedocs.io)**.
+Full documentation, API reference, and guides live at **[qtest-quantum.readthedocs.io](https://qtest-quantum.readthedocs.io)**.
 
 Highlights worth bookmarking:
 
-- [Quickstart guide](https://qtest.readthedocs.io/en/latest/quickstart.html)
-- [Writing custom assertions](https://qtest.readthedocs.io/en/latest/guides/writing_assertions.html)
-- [Property-based testing for quantum circuits](https://qtest.readthedocs.io/en/latest/guides/property_testing.html)
-- [API reference](https://qtest.readthedocs.io/en/latest/api/)
+- [Quickstart guide](https://qtest-quantum.readthedocs.io/en/latest/quickstart.html)
+- [Writing custom assertions](https://qtest-quantum.readthedocs.io/en/latest/guides/writing_assertions.html)
+- [Property-based testing for quantum circuits](https://qtest-quantum.readthedocs.io/en/latest/guides/property_testing.html)
+- [API reference](https://qtest-quantum.readthedocs.io/en/latest/api/)
 
 ---
 

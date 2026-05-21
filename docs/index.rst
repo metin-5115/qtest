@@ -14,7 +14,7 @@ qtest — statistical, pytest-native testing for quantum circuits
    :alt: License: MIT
 
 .. image:: https://readthedocs.org/projects/qtest/badge/?version=latest
-   :target: https://qtest.readthedocs.io
+   :target: https://qtest-quantum.readthedocs.io
    :alt: Documentation Status
 
 **qtest** is an open-source Python library that brings the discipline of

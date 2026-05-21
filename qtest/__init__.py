@@ -11,7 +11,7 @@ Public API:
     - assert_unitary
     - assert_circuit_equivalent
 
-See https://qtest.readthedocs.io for full documentation.
+See https://qtest-quantum.readthedocs.io for full documentation.
 """
 
 from qtest.assertions import (

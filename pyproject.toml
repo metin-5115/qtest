@@ -110,7 +110,7 @@ all = [
 # ----------------------------------------------------------------------------
 [project.urls]
 Homepage      = "https://github.com/metin-5115/qtest"
-Documentation = "https://qtest.readthedocs.io"
+Documentation = "https://qtest-quantum.readthedocs.io"
 Repository    = "https://github.com/metin-5115/qtest"
 Issues        = "https://github.com/metin-5115/qtest/issues"
 Changelog     = "https://github.com/metin-5115/qtest/blob/main/CHANGELOG.md"
