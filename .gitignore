@@ -170,3 +170,4 @@ benchmarks/results/
 # ---------- Local draft / workspace folders (not for the public repo) ----------
 05-metrics/
 qtest-promptlar.md
+test_my_circuit.py
