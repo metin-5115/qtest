@@ -32,8 +32,7 @@ def _reset_config() -> None:
 
 # Body of an inner test file: prints the current qtest config to stdout
 # so the outer assertions can pattern-match against the captured output.
-_PROBE_TEST = textwrap.dedent(
-    """
+_PROBE_TEST = textwrap.dedent("""
     from qtest.config import get_config
 
     def test_probe():
@@ -45,8 +44,7 @@ _PROBE_TEST = textwrap.dedent(
         print(f"METRIC={c.statistical_metric}")
         print(f"AUTO_TOL={c.auto_tolerance}")
         print(f"VERBOSE={c.verbose_failures}")
-    """
-)
+    """)
 
 
 # --------------------------------------------------------------------------- #

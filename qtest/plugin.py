@@ -35,7 +35,9 @@ from typing import Any
 
 import pytest
 
+from qtest._report import _LOG, record_distance
 from qtest.config import configure, get_config, load_from_pyproject
+from qtest.noise import available_presets
 
 # --------------------------------------------------------------------------- #
 # Per-session statistics                                                      #
@@ -45,33 +47,22 @@ from qtest.config import configure, get_config, load_from_pyproject
 class _RunStats:
     """Accumulator for quantum-test statistics shown in ``--qtest-summary``.
 
-    A single module-level instance, :data:`_STATS`, is mutated by the
-    plugin's hooks and by :func:`record_distance`. It is reset at the
-    start of every ``pytest_configure`` so re-running pytest within the
-    same Python process (notably via :class:`pytest.Pytester`) yields
-    clean numbers.
+    A single module-level instance, :data:`_STATS`, counts quantum-marked
+    tests. Measured distances are accumulated separately in
+    :data:`qtest._report._LOG` (which assertion code feeds without importing
+    pytest). Both are reset at the start of every ``pytest_configure`` so
+    re-running pytest within the same Python process (notably via
+    :class:`pytest.Pytester`) yields clean numbers.
     """
 
     def __init__(self) -> None:
         self.quantum_tests_run: int = 0
-        self.distances: list[float] = []
 
     def reset(self) -> None:
         self.quantum_tests_run = 0
-        self.distances.clear()
 
 
 _STATS = _RunStats()
-
-
-def record_distance(distance: float) -> None:
-    """Record a measured distance for the optional ``--qtest-summary`` report.
-
-    Assertion helpers (or user tests) may call this to feed samples into
-    the end-of-session average. Values are stored as plain floats; no
-    aggregation happens until the summary is rendered.
-    """
-    _STATS.distances.append(distance)
 
 
 # --------------------------------------------------------------------------- #
@@ -88,6 +79,7 @@ _CLI_TO_FIELD: dict[str, str] = {
     "qtest_backend": "default_backend",
     "qtest_seed": "default_seed",
     "qtest_metric": "statistical_metric",
+    "qtest_noise": "default_noise",
 }
 
 _BOOL_CLI_TO_FIELD: dict[str, str] = {
@@ -112,8 +104,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         dest="qtest_tolerance",
         type=float,
         default=None,
-        help="Default tolerance for distribution / state comparisons "
-        "(must lie in [0, 1]).",
+        help="Default tolerance for distribution / state comparisons " "(must lie in [0, 1]).",
     )
     group.addoption(
         "--qtest-backend",
@@ -138,6 +129,15 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=None,
         help="Default statistical metric for distribution comparisons.",
     )
+    group.addoption(
+        "--qtest-noise",
+        action="store",
+        dest="qtest_noise",
+        choices=available_presets(),
+        default=None,
+        help="Apply a built-in noise preset to sampling-based assertions "
+        "(ideal/noiseless if omitted).",
+    )
     # Boolean flags: default=None so that "not passed" can be detected and
     # left to pyproject.toml / dataclass defaults rather than overriding to
     # False.
@@ -161,6 +161,13 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         dest="qtest_summary",
         default=False,
         help="Print a quantum-test summary at the end of the test session.",
+    )
+    group.addoption(
+        "--qtest-snapshot-update",
+        action="store_true",
+        dest="qtest_snapshot_update",
+        default=False,
+        help="(Re)write distribution snapshot golden files instead of comparing.",
     )
 
 
@@ -214,8 +221,7 @@ def pytest_configure(config: pytest.Config) -> None:
     )
     config.addinivalue_line(
         "markers",
-        "slow_quantum: quantum test that is slow "
-        "(deselect with -m 'not slow_quantum')",
+        "slow_quantum: quantum test that is slow " "(deselect with -m 'not slow_quantum')",
     )
 
     settings: dict[str, Any] = {}
@@ -226,6 +232,7 @@ def pytest_configure(config: pytest.Config) -> None:
         configure(**settings)
 
     _STATS.reset()
+    _LOG.reset()
 
 
 # --------------------------------------------------------------------------- #
@@ -256,17 +263,48 @@ def pytest_terminal_summary(
 
     cfg = get_config()
     n = _STATS.quantum_tests_run
-    total_shots = n * cfg.default_shots
-    avg_distance = statistics.fmean(_STATS.distances) if _STATS.distances else None
+    distances = _LOG.values
+    recorded_shots = _LOG.total_shots
+    avg_distance = statistics.fmean(distances) if distances else None
 
     terminalreporter.write_sep("=", "qtest summary")
     terminalreporter.write_line(f"Quantum tests run    : {n}")
     terminalreporter.write_line(f"Backend              : {cfg.default_backend}")
-    terminalreporter.write_line(f"Total shots          : {total_shots}")
+    if cfg.default_noise:
+        terminalreporter.write_line(f"Noise preset         : {cfg.default_noise}")
+    # Real numbers, summed from the assertions that actually sampled circuits —
+    # independent of whether tests carry the @pytest.mark.quantum marker.
+    terminalreporter.write_line(f"Assertions recorded  : {len(distances)}")
+    terminalreporter.write_line(f"Shots sampled        : {recorded_shots}")
     if avg_distance is None:
         terminalreporter.write_line("Average distance     : n/a")
     else:
         terminalreporter.write_line(f"Average distance     : {avg_distance:.6f}")
+        terminalreporter.write_line(
+            f"Min / Max distance   : {min(distances):.6f} / {max(distances):.6f}"
+        )
 
 
-__all__ = ["record_distance"]
+# --------------------------------------------------------------------------- #
+# Snapshot fixture                                                            #
+# --------------------------------------------------------------------------- #
+
+
+@pytest.fixture
+def qtest_snapshot(request: pytest.FixtureRequest) -> Any:
+    """Provide a :class:`qtest.snapshot.Snapshot` bound to the current test.
+
+    Golden files are stored in a ``__qtest_snapshots__/`` directory beside the
+    test file, named after the test's node id. Pass ``--qtest-snapshot-update``
+    to (re)write them.
+    """
+    from pathlib import Path
+
+    from qtest.snapshot import Snapshot, _sanitize
+
+    update = bool(request.config.getoption("qtest_snapshot_update", default=False))
+    directory = Path(str(request.path)).parent / "__qtest_snapshots__"
+    return Snapshot(directory=directory, default_name=_sanitize(request.node.name), update=update)
+
+
+__all__ = ["qtest_snapshot", "record_distance"]

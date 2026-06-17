@@ -162,9 +162,7 @@ def test_broken_oracle_does_not_amplify_marked_state() -> None:
     expected["10"] = 1.0
 
     with pytest.raises(AssertionError):
-        assert_distribution_close(
-            qc, expected, tolerance=0.01, shots=2000, seed=0
-        )
+        assert_distribution_close(qc, expected, tolerance=0.01, shots=2000, seed=0)
 
 
 # --------------------------------------------------------------------------- #

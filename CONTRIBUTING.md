@@ -6,7 +6,7 @@ environment up, make a change, run the test suite, and open a pull
 request.
 
 By participating in this project you agree to abide by our
-[Code of Conduct](CODE_OF_CONDUCT.md).
+[Code of Conduct](https://github.com/metin-5115/qtest/blob/main/CODE_OF_CONDUCT.md).
 
 ---
 
@@ -240,7 +240,7 @@ proposal includes:
 ## Security issues
 
 **Do not file security issues in the public issue tracker.** See
-[SECURITY.md](SECURITY.md) for the disclosure process.
+[SECURITY.md](https://github.com/metin-5115/qtest/blob/main/SECURITY.md) for the disclosure process.
 
 ---
 

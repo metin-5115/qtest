@@ -28,6 +28,8 @@ from qtest.backends import Backend
 from qtest.backends.registry import get_backend
 from qtest.config import get_config
 from qtest.metrics import fidelity
+from qtest.noise import NoiseModel
+from qtest.noise.resolve import resolve_noise_model
 
 # Accepted types for the *expected_state* parameter.
 ExpectedState = Union[str, "list[complex]", "tuple[complex, ...]", np.ndarray]
@@ -49,6 +51,7 @@ def assert_state_close(
     tolerance: float = 1e-6,
     global_phase: bool = True,
     backend: Backend | None = None,
+    noise_model: NoiseModel | str | None = None,
     msg: str | None = None,
 ) -> None:
     """Assert that *circuit*'s state vector equals *expected_state*.
@@ -73,6 +76,13 @@ def assert_state_close(
         Backend to extract the state vector with. Defaults to the
         configured default backend; must satisfy
         :attr:`Backend.supports_statevector`.
+    noise_model
+        Optional :class:`qtest.noise.NoiseModel` (or preset name). When given,
+        the circuit is evolved into a (generally mixed) **density matrix** under
+        the noise and compared to *expected_state* via fidelity; ``None`` (the
+        default) keeps the exact state-vector comparison. Noisy comparison
+        requires ``global_phase=True`` (fidelity is the only sensible notion for
+        mixed states).
     msg
         Optional prefix prepended to the assertion failure message.
 
@@ -106,6 +116,19 @@ def assert_state_close(
             "extraction (supports_statevector is False). Use a state-vector-"
             "capable backend such as QiskitBackend."
         )
+
+    resolved_noise = resolve_noise_model(noise_model)
+    if resolved_noise is not None:
+        _assert_state_close_noisy(
+            circuit=circuit,
+            expected=expected,
+            tolerance=tolerance,
+            global_phase=global_phase,
+            backend=backend,
+            noise_model=resolved_noise,
+            user_msg=msg,
+        )
+        return
 
     actual = np.asarray(backend.get_statevector(circuit), dtype=complex)
     if actual.ndim != 1:
@@ -148,6 +171,62 @@ def assert_state_close(
 # --------------------------------------------------------------------------- #
 # Helpers                                                                     #
 # --------------------------------------------------------------------------- #
+
+
+def _assert_state_close_noisy(
+    *,
+    circuit: Any,
+    expected: np.ndarray,
+    tolerance: float,
+    global_phase: bool,
+    backend: Backend,
+    noise_model: NoiseModel,
+    user_msg: str | None,
+) -> None:
+    """Noisy variant of :func:`assert_state_close` using density-matrix fidelity.
+
+    Under noise the circuit produces a mixed state, so the only meaningful
+    comparison is fidelity against the (pure) *expected* target — there is no
+    state vector to take an L2 distance of.
+    """
+    if not global_phase:
+        raise ValueError(
+            "global_phase=False is not supported with a noise_model: a noisy "
+            "circuit yields a mixed state, for which only fidelity "
+            "(global_phase=True) is well defined."
+        )
+    if not hasattr(backend, "get_density_matrix"):
+        raise ValueError(
+            f"Backend {backend.name!r} does not support density-matrix "
+            "extraction, which is required for noisy state comparison."
+        )
+
+    rho = np.asarray(backend.get_density_matrix(circuit, noise_model=noise_model), dtype=complex)
+    dim = expected.shape[0]
+    if rho.shape != (dim, dim):
+        raise ValueError(
+            f"Density matrix shape mismatch: circuit produced {rho.shape}, "
+            f"expected ({dim}, {dim}). Check qubit counts."
+        )
+
+    fid = float(np.clip(fidelity(rho, expected), 0.0, 1.0))
+    if fid >= 1.0 - tolerance - _FP_SLACK:
+        return
+
+    lines: list[str] = []
+    if user_msg:
+        lines.extend([user_msg, ""])
+    lines.append("State mismatch under noise")
+    lines.append("")
+    lines.append(f"  Circuit: {_circuit_summary(circuit)}")
+    lines.append(f"  Backend: {backend.name}")
+    lines.append(f"  Noise: {noise_model.label}")
+    lines.append(f"  Tolerance: {tolerance:g}")
+    lines.append(f"  Fidelity: {fid:.6f} (expected >= {1.0 - tolerance:.6g})")
+    lines.append("")
+    lines.append("  Expected (pure) state:")
+    lines.append(_format_state(expected))
+    raise AssertionError("\n".join(lines))
 
 
 def _coerce_expected_state(expected_state: ExpectedState) -> np.ndarray:

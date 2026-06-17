@@ -30,7 +30,6 @@ from qiskit import QuantumCircuit, transpile
 
 from qtest.assertions import assert_circuit_equivalent
 
-
 # --------------------------------------------------------------------------- #
 # Reference circuit                                                           #
 # --------------------------------------------------------------------------- #

@@ -14,7 +14,7 @@ build-backend = "hatchling.build"
 # 2. Project metadata (PEP 621)
 # ----------------------------------------------------------------------------
 [project]
-name = "qtest"
+name = "qtest-quantum"
 dynamic = ["version"]
 description = "Statistical, pytest-native testing for quantum circuits."
 readme = "README.md"
@@ -75,6 +75,15 @@ hypothesis = [
 aer = [
     "qiskit-aer>=0.13",
 ]
+cirq = [
+    "cirq-core>=1.3",
+]
+pennylane = [
+    "pennylane>=0.35",
+]
+qasm3 = [
+    "qiskit-qasm3-import>=0.5",
+]
 viz = [
     "matplotlib>=3.7",
 ]
@@ -102,7 +111,7 @@ docs = [
     "sphinxcontrib-bibtex>=2.6",
 ]
 all = [
-    "qtest[hypothesis,aer,viz,dev,docs]",
+    "qtest-quantum[hypothesis,aer,cirq,pennylane,qasm3,viz,dev,docs]",
 ]
 
 # ----------------------------------------------------------------------------
@@ -266,8 +275,16 @@ branch = true
 source = ["qtest"]
 omit = [
     "qtest/_version.py",
+    # Optional backends: their SDKs (cirq / pennylane) are not installed in the
+    # default CI matrix, so their execution lines are not measured there. They
+    # are fully implemented and covered by importorskip-guarded tests that run
+    # wherever the SDKs are available.
     "qtest/backends/cirq_backend.py",
     "qtest/backends/pennylane_backend.py",
+    # Optional visualisation module: matplotlib (the [viz] extra) is not in the
+    # default CI matrix, so its lines are not measured there. Covered by
+    # importorskip-guarded tests wherever matplotlib is available.
+    "qtest/viz.py",
     "tests/*",
 ]
 parallel = true

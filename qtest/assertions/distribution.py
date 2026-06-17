@@ -20,6 +20,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from qtest._report import record_distance
 from qtest.backends import Backend
 from qtest.backends.registry import get_backend
 from qtest.config import _resolve_value, get_config
@@ -29,6 +30,8 @@ from qtest.metrics import (
     hellinger_distance,
     total_variation_distance,
 )
+from qtest.noise import NoiseModel
+from qtest.noise.resolve import resolve_noise_model
 
 _VALID_METRICS = frozenset({"tv", "chi_square", "hellinger"})
 _PROB_SUM_ATOL = 1e-6
@@ -47,6 +50,7 @@ def assert_distribution_close(
     metric: str | None = None,
     backend: Backend | None = None,
     seed: int | None = None,
+    noise_model: NoiseModel | str | None = None,
     msg: str | None = None,
 ) -> None:
     """Assert that *circuit*'s measurement distribution is close to *expected*.
@@ -63,6 +67,10 @@ def assert_distribution_close(
     shots, tolerance, metric, backend, seed
         Per-call overrides for the corresponding global config defaults.
         ``None`` means "use config" — see :class:`qtest.config.QtestConfig`.
+    noise_model
+        Optional :class:`qtest.noise.NoiseModel` (or the name of a built-in
+        preset) applied during simulation. ``None`` (the default) uses the
+        ``default_noise`` config preset if set, otherwise runs noiseless.
     msg
         Optional prefix prepended to the assertion failure message.
 
@@ -115,7 +123,11 @@ def assert_distribution_close(
     if backend is None:
         backend = get_backend(cfg.default_backend)
 
-    raw_counts = backend.run_circuit(circuit, shots=shots, seed=seed)
+    resolved_noise = resolve_noise_model(noise_model)
+    run_kwargs: dict[str, Any] = {"shots": shots, "seed": seed}
+    if resolved_noise is not None:
+        run_kwargs["noise_model"] = resolved_noise
+    raw_counts = backend.run_circuit(circuit, **run_kwargs)
     measured_counts = {k.replace(" ", ""): v for k, v in raw_counts.items()}
     measured_probs = _normalize_counts(measured_counts)
 
@@ -137,6 +149,7 @@ def assert_distribution_close(
                     expected=expected_norm,
                     measured=measured_probs,
                     user_msg=msg,
+                    noise_label=resolved_noise.label if resolved_noise else None,
                     extra_note=f"chi-square rejected hypothesis outright: {exc}",
                 )
             ) from None
@@ -152,6 +165,8 @@ def assert_distribution_close(
         failed = distance > tolerance
         reported_value = distance
         distance_label = f"{metric} distance"
+        # Feed the optional --qtest-summary report.
+        record_distance(distance, metric, shots=shots)
 
     if failed:
         raise AssertionError(
@@ -166,6 +181,7 @@ def assert_distribution_close(
                 expected=expected_norm,
                 measured=measured_probs,
                 user_msg=msg,
+                noise_label=resolved_noise.label if resolved_noise else None,
             )
         )
 
@@ -314,6 +330,7 @@ def _format_failure_message(
     expected: dict[str, float],
     measured: dict[str, float],
     user_msg: str | None,
+    noise_label: str | None = None,
     extra_note: str | None = None,
 ) -> str:
     """Build the multi-line ``AssertionError`` payload."""
@@ -328,6 +345,8 @@ def _format_failure_message(
     lines.append("")
     lines.append(f"  Circuit: {_circuit_summary(circuit)}")
     lines.append(f"  Backend: {backend.name}")
+    if noise_label:
+        lines.append(f"  Noise: {noise_label}")
     lines.append(f"  Shots: {shots}")
     lines.append(f"  Metric: {metric}")
     lines.append(f"  Tolerance: {tolerance}")

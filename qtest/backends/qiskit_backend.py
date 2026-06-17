@@ -17,7 +17,11 @@ from typing import Any
 
 import numpy as np
 
-from qtest.backends.base import Backend
+from qtest.backends.base import Backend, CircuitResources
+
+# Instructions that are not unitary gates and must not count toward
+# two-/multi-qubit gate tallies (a barrier spans every qubit it touches).
+_NON_GATE_OPS = frozenset({"barrier", "measure", "reset", "delay", "snapshot"})
 
 _QISKIT_MISSING_MSG = (
     "QiskitBackend requires Qiskit. Install with one of:\n"
@@ -93,20 +97,27 @@ class QiskitBackend(Backend):
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def _get_sampling_simulator() -> Any:
+    def _get_sampling_simulator(aer_noise_model: Any | None = None) -> Any:
         """Return an instantiated simulator backend suitable for sampling.
 
         Prefers ``qiskit_aer.AerSimulator``; falls back to
-        ``qiskit.providers.basic_provider.BasicSimulator``.
+        ``qiskit.providers.basic_provider.BasicSimulator`` only when Aer is
+        unavailable *and* no noise model is requested (noise needs Aer).
         """
         try:
             from qiskit_aer import AerSimulator
+        except ImportError as exc:
+            if aer_noise_model is not None:
+                from qtest.noise.models import _AER_MISSING_MSG
 
-            return AerSimulator()
-        except ImportError:
+                raise ImportError(_AER_MISSING_MSG) from exc
             from qiskit.providers.basic_provider import BasicSimulator
 
             return BasicSimulator()
+
+        if aer_noise_model is not None:
+            return AerSimulator(noise_model=aer_noise_model)
+        return AerSimulator()
 
     # ------------------------------------------------------------------ #
     # Execution                                                           #
@@ -117,6 +128,7 @@ class QiskitBackend(Backend):
         circuit: Any,
         shots: int | None = None,
         seed: int | None = None,
+        noise_model: Any | None = None,
     ) -> dict[str, int]:
         qiskit = _require_qiskit()
 
@@ -130,7 +142,8 @@ class QiskitBackend(Backend):
         if seed is not None and (not isinstance(seed, int) or isinstance(seed, bool)):
             raise ValueError(f"seed must be an integer or None, got {seed!r}")
 
-        simulator = self._get_sampling_simulator()
+        aer_noise_model = noise_model.to_qiskit() if noise_model is not None else None
+        simulator = self._get_sampling_simulator(aer_noise_model)
         transpiled = qiskit.transpile(
             circuit,
             simulator,
@@ -160,6 +173,34 @@ class QiskitBackend(Backend):
         sv = Statevector.from_instruction(circuit)
         return np.asarray(sv.data, dtype=complex)
 
+    def get_density_matrix(self, circuit: Any, noise_model: Any | None = None) -> np.ndarray:
+        qiskit = _require_qiskit()
+        if circuit is None:
+            raise ValueError("circuit must not be None")
+
+        # Noiseless: the exact pure-state projector, no Aer required.
+        if noise_model is None:
+            from qiskit.quantum_info import DensityMatrix
+
+            dm = DensityMatrix.from_instruction(circuit)
+            return np.asarray(dm.data, dtype=complex)
+
+        # Noisy: evolve under the noise model on Aer's density-matrix simulator.
+        try:
+            from qiskit_aer import AerSimulator
+        except ImportError as exc:
+            from qtest.noise.models import _AER_MISSING_MSG
+
+            raise ImportError(_AER_MISSING_MSG) from exc
+
+        simulator = AerSimulator(method="density_matrix", noise_model=noise_model.to_qiskit())
+        circ = circuit.copy()
+        circ.save_density_matrix()
+        transpiled = qiskit.transpile(circ, simulator, optimization_level=0)
+        result = simulator.run(transpiled).result()
+        dm = result.data(0)["density_matrix"]
+        return np.asarray(dm.data if hasattr(dm, "data") else dm, dtype=complex)
+
     def get_unitary(self, circuit: Any) -> np.ndarray:
         _require_qiskit()
         if circuit is None:
@@ -169,3 +210,30 @@ class QiskitBackend(Backend):
 
         op = Operator(circuit)
         return np.asarray(op.data, dtype=complex)
+
+    def get_resources(self, circuit: Any) -> CircuitResources:
+        _require_qiskit()
+        if circuit is None:
+            raise ValueError("circuit must not be None")
+
+        gate_counts = {str(name): int(count) for name, count in circuit.count_ops().items()}
+
+        two_qubit = 0
+        multi_qubit = 0
+        for instruction in circuit.data:
+            if instruction.operation.name in _NON_GATE_OPS:
+                continue
+            n = len(instruction.qubits)
+            if n >= 2:
+                multi_qubit += 1
+                if n == 2:
+                    two_qubit += 1
+
+        return CircuitResources(
+            num_qubits=int(circuit.num_qubits),
+            depth=int(circuit.depth()),
+            size=int(circuit.size()),
+            gate_counts=gate_counts,
+            two_qubit_count=two_qubit,
+            multi_qubit_count=multi_qubit,
+        )

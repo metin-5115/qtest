@@ -22,7 +22,6 @@ Design notes
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Optional
 
 from hypothesis import strategies as st
 
@@ -63,7 +62,7 @@ _PAULI_ALPHABET: tuple[str, ...] = ("I", "X", "Y", "Z")
 # --------------------------------------------------------------------------- #
 
 
-def random_gates(gate_set: Optional[Sequence[str]] = None) -> st.SearchStrategy[str]:
+def random_gates(gate_set: Sequence[str] | None = None) -> st.SearchStrategy[str]:
     """Strategy that draws a single gate **name** from *gate_set*.
 
     Parameters

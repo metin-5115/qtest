@@ -13,6 +13,9 @@ used internally by the assertions:
   and shot-noise tolerance helpers (Pearson :math:`\chi^2`,
   Kolmogorov–Smirnov, :func:`auto_tolerance`).
 
+* :mod:`qtest.metrics.entanglement` — entanglement and information measures
+  (partial trace, purity, von Neumann entropy, entanglement entropy).
+
 All functions are pure: they validate input, never mutate their
 arguments, and raise :class:`ValueError` on malformed input.
 
@@ -32,6 +35,10 @@ Public API
    chi_square_test
    kolmogorov_smirnov_test
    auto_tolerance
+   partial_trace
+   purity
+   von_neumann_entropy
+   entanglement_entropy
 
 Reference
 ---------
@@ -53,6 +60,14 @@ Statistical tests
 ~~~~~~~~~~~~~~~~~
 
 .. automodule:: qtest.metrics.statistical_tests
+   :members:
+   :show-inheritance:
+   :member-order: bysource
+
+Entanglement
+~~~~~~~~~~~~
+
+.. automodule:: qtest.metrics.entanglement
    :members:
    :show-inheritance:
    :member-order: bysource

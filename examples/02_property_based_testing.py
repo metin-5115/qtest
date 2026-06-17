@@ -107,9 +107,7 @@ _CLIFFORD_SET = ["h", "s", "x", "y", "z", "cx"]
     a=quantum_circuits(n_qubits=2, depth=6, gate_set=_CLIFFORD_SET),
     b=quantum_circuits(n_qubits=2, depth=6, gate_set=_CLIFFORD_SET),
 )
-def test_clifford_composition_stays_clifford(
-    a: QuantumCircuit, b: QuantumCircuit
-) -> None:
+def test_clifford_composition_stays_clifford(a: QuantumCircuit, b: QuantumCircuit) -> None:
     composed = a.compose(b)
     # Will raise QiskitError if `composed` is not a Clifford operator.
     clifford = Clifford(composed)

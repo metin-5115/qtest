@@ -21,6 +21,12 @@ from qtest.metrics.distances import (
     total_variation_distance,
     trace_distance,
 )
+from qtest.metrics.entanglement import (
+    entanglement_entropy,
+    partial_trace,
+    purity,
+    von_neumann_entropy,
+)
 from qtest.metrics.statistical_tests import (
     auto_tolerance,
     chi_square_test,
@@ -30,10 +36,14 @@ from qtest.metrics.statistical_tests import (
 __all__ = [
     "auto_tolerance",
     "chi_square_test",
+    "entanglement_entropy",
     "fidelity",
     "hellinger_distance",
     "hilbert_schmidt_distance",
     "kolmogorov_smirnov_test",
+    "partial_trace",
+    "purity",
     "total_variation_distance",
     "trace_distance",
+    "von_neumann_entropy",
 ]

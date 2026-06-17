@@ -65,7 +65,6 @@ from qiskit import QuantumCircuit
 from qtest.assertions import assert_distribution_close, assert_state_close
 from qtest.plugin import record_distance
 
-
 # --------------------------------------------------------------------------- #
 # Marker: @pytest.mark.quantum                                                #
 # --------------------------------------------------------------------------- #

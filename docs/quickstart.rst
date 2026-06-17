@@ -10,14 +10,14 @@ Install qtest
 
 .. code-block:: bash
 
-   pip install qtest
+   pip install qtest-quantum
 
 That gives you the assertions, the pytest plugin, and the Qiskit backend.
 If you want Hypothesis-driven property tests, install the extra:
 
 .. code-block:: bash
 
-   pip install "qtest[hypothesis]"
+   pip install "qtest-quantum[hypothesis]"
 
 Your first quantum test
 -----------------------

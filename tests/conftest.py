@@ -4,4 +4,5 @@
 pytest_plugins = [
     "qtest.fixtures.common_states",
     "qtest.fixtures.common_gates",
+    "qtest.fixtures.noise",
 ]
