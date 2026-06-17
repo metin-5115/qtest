@@ -66,9 +66,7 @@ class TestTotalVariationDistance:
 
     def test_missing_keys_treated_as_zero(self) -> None:
         # P = {0: 0.5, 1: 0.5}, Q = {0: 1.0}  ->  TVD = 0.5
-        assert total_variation_distance(
-            {"0": 0.5, "1": 0.5}, {"0": 1.0}
-        ) == pytest.approx(0.5)
+        assert total_variation_distance({"0": 0.5, "1": 0.5}, {"0": 1.0}) == pytest.approx(0.5)
 
     @pytest.mark.parametrize(
         ("p", "q", "expected"),
@@ -87,9 +85,7 @@ class TestTotalVariationDistance:
     ) -> None:
         assert total_variation_distance(p, q) == pytest.approx(expected)
 
-    def test_symmetry(
-        self, uniform_2: dict[str, float], biased_2: dict[str, float]
-    ) -> None:
+    def test_symmetry(self, uniform_2: dict[str, float], biased_2: dict[str, float]) -> None:
         assert total_variation_distance(uniform_2, biased_2) == pytest.approx(
             total_variation_distance(biased_2, uniform_2)
         )
@@ -137,9 +133,7 @@ class TestHellingerDistance:
     def test_disjoint_support_one(self) -> None:
         assert hellinger_distance({"0": 1.0}, {"1": 1.0}) == pytest.approx(1.0)
 
-    def test_symmetry(
-        self, uniform_2: dict[str, float], biased_2: dict[str, float]
-    ) -> None:
+    def test_symmetry(self, uniform_2: dict[str, float], biased_2: dict[str, float]) -> None:
         assert hellinger_distance(uniform_2, biased_2) == pytest.approx(
             hellinger_distance(biased_2, uniform_2)
         )
@@ -187,9 +181,7 @@ class TestFidelity:
     ) -> None:
         assert fidelity(zero_state, one_state) == pytest.approx(0.0)
 
-    def test_plus_vs_zero_is_half(
-        self, zero_state: np.ndarray, plus_state: np.ndarray
-    ) -> None:
+    def test_plus_vs_zero_is_half(self, zero_state: np.ndarray, plus_state: np.ndarray) -> None:
         # |<+|0>|^2 = 1/2
         assert fidelity(plus_state, zero_state) == pytest.approx(0.5)
 
@@ -197,9 +189,7 @@ class TestFidelity:
         phase = np.exp(1j * 1.2345)
         assert fidelity(plus_state, phase * plus_state) == pytest.approx(1.0)
 
-    def test_density_matrix_self_fidelity_is_one(
-        self, maximally_mixed_2: np.ndarray
-    ) -> None:
+    def test_density_matrix_self_fidelity_is_one(self, maximally_mixed_2: np.ndarray) -> None:
         # F(rho, rho) = (tr sqrt(rho^2))^2 = (tr rho)^2 = 1.
         assert fidelity(maximally_mixed_2, maximally_mixed_2) == pytest.approx(1.0)
 
@@ -210,9 +200,7 @@ class TestFidelity:
         assert fidelity(zero_state, maximally_mixed_2) == pytest.approx(0.5)
 
     def test_symmetry(self, plus_state: np.ndarray, zero_state: np.ndarray) -> None:
-        assert fidelity(plus_state, zero_state) == pytest.approx(
-            fidelity(zero_state, plus_state)
-        )
+        assert fidelity(plus_state, zero_state) == pytest.approx(fidelity(zero_state, plus_state))
 
     def test_random_pure_pairs_in_unit_interval(self) -> None:
         rng = np.random.default_rng(42)
@@ -228,9 +216,7 @@ class TestFidelity:
         with pytest.raises(ValueError):
             fidelity(np.array([1.0, 0.0]), np.array([1.0, 0.0, 0.0]))
 
-    def test_mixed_input_types(
-        self, zero_state: np.ndarray, maximally_mixed_2: np.ndarray
-    ) -> None:
+    def test_mixed_input_types(self, zero_state: np.ndarray, maximally_mixed_2: np.ndarray) -> None:
         # Caller can mix a state vector and a density matrix in either order.
         a = fidelity(zero_state, maximally_mixed_2)
         b = fidelity(maximally_mixed_2, zero_state)
@@ -302,9 +288,7 @@ class TestHilbertSchmidtDistance:
         rng = np.random.default_rng(0)
         a = rng.standard_normal((3, 3)) + 1j * rng.standard_normal((3, 3))
         b = rng.standard_normal((3, 3)) + 1j * rng.standard_normal((3, 3))
-        assert hilbert_schmidt_distance(a, b) == pytest.approx(
-            hilbert_schmidt_distance(b, a)
-        )
+        assert hilbert_schmidt_distance(a, b) == pytest.approx(hilbert_schmidt_distance(b, a))
 
     def test_triangle_inequality(self) -> None:
         rng = np.random.default_rng(1)
@@ -312,9 +296,7 @@ class TestHilbertSchmidtDistance:
         b = rng.standard_normal((4, 4))
         c = rng.standard_normal((4, 4))
         assert hilbert_schmidt_distance(a, c) <= (
-            hilbert_schmidt_distance(a, b)
-            + hilbert_schmidt_distance(b, c)
-            + 1e-12
+            hilbert_schmidt_distance(a, b) + hilbert_schmidt_distance(b, c) + 1e-12
         )
 
     def test_non_2d_raises(self) -> None:

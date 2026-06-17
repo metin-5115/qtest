@@ -25,7 +25,7 @@ author = "Metin Tuncbilek"
 copyright = f"{datetime.now():%Y}, {author}"
 
 try:
-    release = metadata.version("qtest")
+    release = metadata.version("qtest-quantum")
 except metadata.PackageNotFoundError:
     # Editable / un-installed checkout — fall back to the source __version__.
     from qtest import __version__ as release  # type: ignore[no-redef]

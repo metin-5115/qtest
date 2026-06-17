@@ -14,7 +14,7 @@ and to shrink failing inputs down to minimal reproducers.
 
    .. code-block:: bash
 
-      pip install "qtest[hypothesis]"
+      pip install "qtest-quantum[hypothesis]"
 
 The strategies at a glance
 --------------------------

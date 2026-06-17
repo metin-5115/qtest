@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from hypothesis import strategies as st
 
@@ -37,9 +37,7 @@ from qtest.strategies.gates import (
 IntLike = Union[int, st.SearchStrategy[int]]
 
 
-def _resolve_int(
-    draw: st.DrawFn, value: IntLike, *, name: str, minimum: int = 1
-) -> int:
+def _resolve_int(draw: st.DrawFn, value: IntLike, *, name: str, minimum: int = 1) -> int:
     """Draw an ``int`` from *value* if it is a strategy, else return as-is.
 
     Centralised so the dual-mode parameters (``n_qubits``, ``depth``)
@@ -47,18 +45,22 @@ def _resolve_int(
     """
     resolved = draw(value) if isinstance(value, st.SearchStrategy) else value
     if not isinstance(resolved, int) or isinstance(resolved, bool) or resolved < minimum:
-        raise ValueError(
-            f"{name} must be an integer >= {minimum}, got {resolved!r}"
-        )
+        raise ValueError(f"{name} must be an integer >= {minimum}, got {resolved!r}")
     return resolved
+
+
+# Module-level default strategies — defined once as shared singletons rather
+# than inline in the signature (flake8-bugbear B008 forbids calls in defaults).
+_DEFAULT_N_QUBITS = st.integers(min_value=1, max_value=5)
+_DEFAULT_DEPTH = st.integers(min_value=1, max_value=20)
 
 
 @st.composite
 def quantum_circuits(
     draw: st.DrawFn,
-    n_qubits: IntLike = st.integers(min_value=1, max_value=5),
-    depth: IntLike = st.integers(min_value=1, max_value=20),
-    gate_set: Optional[Sequence[str]] = None,
+    n_qubits: IntLike = _DEFAULT_N_QUBITS,
+    depth: IntLike = _DEFAULT_DEPTH,
+    gate_set: Sequence[str] | None = None,
     include_measurements: bool = False,
 ) -> Any:
     """Strategy yielding random :class:`qiskit.QuantumCircuit` instances.
@@ -113,18 +115,14 @@ def quantum_circuits(
     n = _resolve_int(draw, n_qubits, name="n_qubits", minimum=1)
     d = _resolve_int(draw, depth, name="depth", minimum=1)
 
-    vocabulary: tuple[str, ...] = (
-        DEFAULT_GATE_SET if gate_set is None else tuple(gate_set)
-    )
+    vocabulary: tuple[str, ...] = DEFAULT_GATE_SET if gate_set is None else tuple(gate_set)
     if not vocabulary:
         raise ValueError("gate_set must be non-empty")
 
     if n == 1:
         vocabulary = tuple(g for g in vocabulary if g not in TWO_QUBIT_GATES)
         if not vocabulary:
-            raise ValueError(
-                "gate_set contains only two-qubit gates but n_qubits == 1"
-            )
+            raise ValueError("gate_set contains only two-qubit gates but n_qubits == 1")
 
     qc = QuantumCircuit(n)
     gate_strategy = st.sampled_from(vocabulary)

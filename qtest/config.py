@@ -69,6 +69,10 @@ class QtestConfig:
     statistical_metric
         Name of the default distance / test for distribution comparisons.
         One of ``"tv"`` (total variation), ``"chi_square"``, ``"hellinger"``.
+    default_noise
+        Name of a built-in :mod:`qtest.noise` preset applied to sampling-based
+        assertions when no ``noise_model`` is passed explicitly. ``None`` means
+        ideal (noiseless) simulation.
     """
 
     default_shots: int = 1000
@@ -78,6 +82,7 @@ class QtestConfig:
     auto_tolerance: bool = False
     verbose_failures: bool = True
     statistical_metric: str = "tv"
+    default_noise: str | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -130,10 +135,19 @@ def _validate(name: str, value: Any) -> None:
         if not isinstance(value, bool):
             raise ValueError(f"verbose_failures must be a bool, got {value!r}")
 
-    elif name == "statistical_metric" and value not in _VALID_METRICS:
-        raise ValueError(
-            f"statistical_metric must be one of {sorted(_VALID_METRICS)}, " f"got {value!r}"
-        )
+    elif name == "statistical_metric":
+        if value not in _VALID_METRICS:
+            raise ValueError(
+                f"statistical_metric must be one of {sorted(_VALID_METRICS)}, " f"got {value!r}"
+            )
+
+    elif name == "default_noise" and value is not None:
+        from qtest.noise import available_presets
+
+        if not isinstance(value, str) or value not in available_presets():
+            raise ValueError(
+                f"default_noise must be None or one of {available_presets()}, got {value!r}"
+            )
 
 
 # --------------------------------------------------------------------------- #

@@ -12,7 +12,7 @@ Qiskit backend:
 
 .. code-block:: bash
 
-   pip install qtest
+   pip install qtest-quantum
 
 To pull in *every* optional dependency in one go — Hypothesis strategies,
 Qiskit Aer for fast simulation, matplotlib visualisation, and the docs
@@ -20,7 +20,7 @@ toolchain — use the ``all`` extra:
 
 .. code-block:: bash
 
-   pip install "qtest[all]"
+   pip install "qtest-quantum[all]"
 
 Optional extras
 ---------------
@@ -37,22 +37,22 @@ gated behind a named extra so you only install what you actually use:
      - Install with
    * - ``hypothesis``
      - Property-based testing strategies (:mod:`qtest.strategies`).
-     - ``pip install "qtest[hypothesis]"``
+     - ``pip install "qtest-quantum[hypothesis]"``
    * - ``aer``
      - The high-performance Qiskit Aer simulator backend.
-     - ``pip install "qtest[aer]"``
+     - ``pip install "qtest-quantum[aer]"``
    * - ``viz``
      - Matplotlib-based plotting helpers.
-     - ``pip install "qtest[viz]"``
+     - ``pip install "qtest-quantum[viz]"``
    * - ``dev``
      - Lint, type-check, test, build, and release tooling.
-     - ``pip install "qtest[dev]"``
+     - ``pip install "qtest-quantum[dev]"``
    * - ``docs``
      - Sphinx, Furo, MyST, and the rest of the docs toolchain.
-     - ``pip install "qtest[docs]"``
+     - ``pip install "qtest-quantum[docs]"``
    * - ``all``
      - All of the above.
-     - ``pip install "qtest[all]"``
+     - ``pip install "qtest-quantum[all]"``
 
 Development install
 -------------------

@@ -267,12 +267,7 @@ def _format_failure(
     # outputs in the two circuits. Skipped for large circuits (>6 qubits) where the
     # full table would be unreadable, and for cases where the unitary matrices
     # were not computed.
-    if (
-        u_a is not None
-        and u_b is not None
-        and n_qubits <= 6
-        and measured > tolerance
-    ):
+    if u_a is not None and u_b is not None and n_qubits <= 6 and measured > tolerance:
         divergent = _find_divergent_inputs(u_a, u_b, n_qubits, top_k=2)
         if divergent and divergent[0][1] > max(tolerance, 1e-9):
             lines.append("")

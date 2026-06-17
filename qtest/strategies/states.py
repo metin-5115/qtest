@@ -26,7 +26,7 @@ What the strategies guarantee
 
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 from hypothesis import strategies as st
@@ -40,9 +40,7 @@ _SEEDS = st.integers(min_value=0, max_value=_MAX_SEED)
 IntLike = Union[int, st.SearchStrategy[int]]
 
 
-def _resolve_int(
-    draw: st.DrawFn, value: IntLike, *, name: str, minimum: int = 1
-) -> int:
+def _resolve_int(draw: st.DrawFn, value: IntLike, *, name: str, minimum: int = 1) -> int:
     resolved = draw(value) if isinstance(value, st.SearchStrategy) else value
     if not isinstance(resolved, int) or isinstance(resolved, bool) or resolved < minimum:
         raise ValueError(f"{name} must be an integer >= {minimum}, got {resolved!r}")
@@ -114,7 +112,7 @@ def product_states(draw: st.DrawFn, n_qubits: IntLike) -> np.ndarray:
 def random_density_matrices(
     draw: st.DrawFn,
     n_qubits: IntLike,
-    rank: Optional[IntLike] = None,
+    rank: IntLike | None = None,
 ) -> np.ndarray:
     """Strategy yielding valid density matrices on *n_qubits*.
 
@@ -147,7 +145,7 @@ def random_density_matrices(
     rng = np.random.default_rng(seed)
 
     a = rng.standard_normal((dim, r)) + 1j * rng.standard_normal((dim, r))
-    rho = a @ a.conj().T
+    rho: np.ndarray = a @ a.conj().T
     rho /= np.trace(rho).real
     return rho
 

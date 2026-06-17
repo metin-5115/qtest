@@ -54,7 +54,7 @@ Install:
 
 .. code-block:: bash
 
-   pip install qtest
+   pip install qtest-quantum
 
 Write your first quantum test — a Bell state should produce a 50/50
 distribution over ``00`` and ``11``:
@@ -100,6 +100,8 @@ tolerance checks.
    guides/writing_assertions
    guides/property_testing
    guides/pytest_integration
+   guides/noise_testing
+   guides/snapshot_testing
 
 .. toctree::
    :maxdepth: 2
@@ -110,6 +112,10 @@ tolerance checks.
    api/fixtures
    api/backends
    api/metrics
+   api/noise
+   api/viz
+   api/snapshot
+   api/qasm
 
 .. toctree::
    :maxdepth: 1

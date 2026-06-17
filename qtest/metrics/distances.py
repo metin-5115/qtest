@@ -111,8 +111,7 @@ def hellinger_distance(
 
     keys = set(p.keys()) | set(q.keys())
     squared_diff_sum = sum(
-        (np.sqrt(max(p.get(k, 0.0), 0.0)) - np.sqrt(max(q.get(k, 0.0), 0.0))) ** 2
-        for k in keys
+        (np.sqrt(max(p.get(k, 0.0), 0.0)) - np.sqrt(max(q.get(k, 0.0), 0.0))) ** 2 for k in keys
     )
     return float(np.sqrt(squared_diff_sum) / np.sqrt(2.0))
 
@@ -151,7 +150,8 @@ def _matrix_sqrt_psd(mat: np.ndarray) -> np.ndarray:
     sym = 0.5 * (mat + mat.conj().T)
     eigvals, eigvecs = np.linalg.eigh(sym)
     eigvals_clipped = np.clip(eigvals.real, 0.0, None)
-    return (eigvecs * np.sqrt(eigvals_clipped)) @ eigvecs.conj().T
+    sqrt_mat: np.ndarray = (eigvecs * np.sqrt(eigvals_clipped)) @ eigvecs.conj().T
+    return sqrt_mat
 
 
 def fidelity(state1: np.ndarray, state2: np.ndarray) -> float:

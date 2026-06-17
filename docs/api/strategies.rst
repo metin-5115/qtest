@@ -8,7 +8,7 @@ testing of quantum circuits, gates, and states.
 .. note::
 
    Strategies require the optional ``hypothesis`` extra:
-   ``pip install "qtest[hypothesis]"``.
+   ``pip install "qtest-quantum[hypothesis]"``.
 
 .. currentmodule:: qtest.strategies
 

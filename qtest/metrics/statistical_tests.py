@@ -89,9 +89,7 @@ def chi_square_test(
         k for k, e, o in zip(keys, expected_counts, observed_counts) if e == 0.0 and o > 0.0
     ]
     if impossible:
-        raise ValueError(
-            f"expected probability is 0 for non-empty observed bins: {impossible}"
-        )
+        raise ValueError(f"expected probability is 0 for non-empty observed bins: {impossible}")
 
     # Drop bins where both observed and expected are zero — they contribute
     # nothing and would make scipy unhappy (division by zero).

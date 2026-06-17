@@ -71,16 +71,20 @@ def list_available_backends() -> list[str]:
 
 
 def _auto_register_defaults() -> None:
-    """Register the bundled Qiskit backend and make it the default.
+    """Register the bundled backends and make Qiskit the default.
 
-    Importing :mod:`qtest.backends.qiskit_backend` does **not** import
-    Qiskit (imports inside that module are lazy), so this call is safe
-    even when Qiskit is not installed; an :class:`ImportError` is only
-    raised when an execution method is actually called.
+    Importing the backend modules does **not** import their underlying SDKs
+    (all such imports are lazy), so this is safe even when Qiskit / Cirq /
+    PennyLane are not installed; an :class:`ImportError` is only raised when
+    an execution method is actually called on a backend whose SDK is missing.
     """
+    from qtest.backends.cirq_backend import CirqBackend
+    from qtest.backends.pennylane_backend import PennyLaneBackend
     from qtest.backends.qiskit_backend import QiskitBackend
 
     register_backend("qiskit", QiskitBackend)
+    register_backend("cirq", CirqBackend)
+    register_backend("pennylane", PennyLaneBackend)
     global _DEFAULT_BACKEND_NAME
     if _DEFAULT_BACKEND_NAME is None:
         _DEFAULT_BACKEND_NAME = "qiskit"
