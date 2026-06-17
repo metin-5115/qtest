@@ -1,0 +1,47 @@
+# ============================================================================
+#  qtest — CodeQL security analysis
+#  Static security / quality scanning for the Python sources. Results appear
+#  under the repository's "Security > Code scanning" tab.
+# ============================================================================
+
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Re-scan weekly (Mondays 06:17 UTC) to catch newly published advisories.
+    - cron: "17 6 * * 1"
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (python)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      actions: read
+      contents: read
+      security-events: write       # required to upload CodeQL results
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"

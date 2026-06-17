@@ -7,7 +7,7 @@
 #  ONE-TIME PYPI SETUP (Trusted Publishing — no API token needed):
 #  ---------------------------------------------------------------
 #  1. Log in to https://pypi.org and either:
-#       - create the "qtest" project, OR
+#       - create the "qtest-quantum" project, OR
 #       - if the project does not yet exist, add it as a *pending* publisher.
 #  2. Open the project's "Publishing" page and add a Trusted Publisher with:
 #       Owner:               <your-github-username>
@@ -133,7 +133,7 @@ jobs:
 
     environment:
       name: pypi
-      url: https://pypi.org/project/qtest/
+      url: https://pypi.org/project/qtest-quantum/
 
     permissions:
       id-token: write                # REQUIRED for PyPI Trusted Publishing (OIDC)

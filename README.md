@@ -3,10 +3,10 @@
 **Statistical, pytest-native testing for quantum circuits.**
 
 [![CI](https://github.com/metin-5115/qtest/actions/workflows/ci.yml/badge.svg)](https://github.com/metin-5115/qtest/actions/workflows/ci.yml)
-[![PyPI version](https://img.shields.io/pypi/v/qtest.svg)](https://pypi.org/project/qtest/)
-[![Python versions](https://img.shields.io/pypi/pyversions/qtest.svg)](https://pypi.org/project/qtest/)
+[![PyPI version](https://img.shields.io/pypi/v/qtest-quantum.svg)](https://pypi.org/project/qtest-quantum/)
+[![Python versions](https://img.shields.io/pypi/pyversions/qtest-quantum.svg)](https://pypi.org/project/qtest-quantum/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey.svg)](https://github.com/metin-5115/qtest)
+[![codecov](https://codecov.io/gh/metin-5115/qtest/branch/main/graph/badge.svg)](https://codecov.io/gh/metin-5115/qtest)
 [![Documentation Status](https://readthedocs.org/projects/qtest-quantum/badge/?version=latest)](https://qtest-quantum.readthedocs.io)
 
 `qtest` is an open-source Python library that brings the discipline of modern software testing to quantum programs. It plugs straight into `pytest`, gives you statistical assertions designed for noisy and probabilistic outputs, and integrates with Hypothesis so you can do property-based testing on quantum circuits — without writing a single line of plumbing.
@@ -31,7 +31,7 @@ Testing quantum software is hard for reasons classical testing tools were never 
 Install:
 
 ```bash
-pip install qtest
+pip install qtest-quantum
 ```
 
 Write your first quantum test — a Bell state should produce a 50/50 distribution over `00` and `11`:
@@ -75,9 +75,14 @@ That's it. No mocking, no manual shot-count math, no hand-rolled tolerance check
 ## Features
 
 - **Statistical assertions built for quantum.** `assert_distribution_close`, `assert_state_close`, `assert_unitary`, and `assert_circuit_equivalent` — each one understands shot noise, fidelity, trace distance, and global phase.
+- **Resource/cost assertions.** `assert_max_depth`, `assert_max_gate_count`, `assert_max_two_qubit_count`, and `assert_max_t_count` lock in the gains of an optimisation or transpiler pass and fail the build when depth, two-qubit-gate count, or T-count regress — pure static analysis, no simulation.
+- **Noise-aware testing.** Inject realistic error channels (depolarizing, bit/phase flip, T1/T2 relaxation, readout) into any assertion with `noise_model=`, or sweep increasing noise with `assert_robust_to_noise` to guard error-mitigation regressions.
 - **Native pytest plugin.** Drop `qtest` into any existing test suite. CLI flags `--qtest-shots`, `--qtest-tolerance`, and `--qtest-seed` let you tune every run without touching code.
 - **Property-based testing for circuits.** Ready-made Hypothesis strategies for random circuits, gates, state vectors, and Haar-random unitaries.
-- **Backend-agnostic by design.** Ships with a Qiskit backend today; the `Backend` protocol is built so Cirq and PennyLane adapters slot in cleanly.
+- **Backend-agnostic by design.** Ships with Qiskit (default), Cirq, and PennyLane backends behind one `Backend` protocol — switch per call or globally with `--qtest-backend`. Install extras with `qtest-quantum[cirq]` / `qtest-quantum[pennylane]`.
+- **OpenQASM interop.** `load_qasm` / `load_qasm_file` parse OpenQASM 2.0/3.0 into circuits you can assert on directly (OpenQASM 3.0 via `qtest-quantum[qasm3]`).
+- **Snapshot (golden-file) testing.** Lock in a circuit's distribution with the `qtest_snapshot` fixture; refresh deliberately with `--qtest-snapshot-update`.
+- **Visualisation & reporting.** `qtest.viz` plots expected-vs-measured distributions (`qtest-quantum[viz]`), and `--qtest-summary` reports measured-distance statistics across the run.
 - **Deterministic by default.** A controlled seed pipeline means a test that passes locally passes on CI.
 - **Zero ceremony fixtures.** `bell_state`, `plus_state`, `minus_state`, `ghz_3` / `ghz_4` / `ghz_5`, `hadamard_circuit`, and `random_clifford` come included.
 
@@ -134,6 +139,22 @@ def test_optimizer_preserves_semantics(original_circuit, optimized_circuit):
 process fidelity, which is global-phase-insensitive by default — no extra
 flag needed.
 
+### Guarding circuit cost across a transpiler pass
+
+```python
+from qiskit import transpile
+from qtest import assert_circuit_equivalent, assert_max_two_qubit_count
+
+def test_transpilation_is_correct_and_cheaper(original_circuit):
+    optimized = transpile(original_circuit, optimization_level=3)
+
+    # 1. The optimiser must not change what the circuit computes.
+    assert_circuit_equivalent(original_circuit, optimized, tolerance=1e-9)
+
+    # 2. ...and it must not regress the expensive two-qubit-gate count.
+    assert_max_two_qubit_count(optimized, max_count=12)
+```
+
 You can also set tolerance globally for an entire run:
 
 ```bash
@@ -147,19 +168,19 @@ pytest --qtest-shots=8192 --qtest-tolerance=0.01 --qtest-seed=42
 Standard install from PyPI:
 
 ```bash
-pip install qtest
+pip install qtest-quantum
 ```
 
 With Hypothesis (property-based testing) and Aer (high-performance simulator):
 
 ```bash
-pip install "qtest[hypothesis,aer]"
+pip install "qtest-quantum[hypothesis,aer]"
 ```
 
 Or pull in every optional dependency in one go:
 
 ```bash
-pip install "qtest[all]"
+pip install "qtest-quantum[all]"
 ```
 
 For development — clone the repo and install in editable mode with the dev extras:
