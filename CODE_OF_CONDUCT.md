@@ -28,8 +28,6 @@ in public spaces.
 If you believe someone is violating the Code of Conduct, please report
 it privately by emailing the project maintainer:
 
-> **metin.tuncbilek@puzzletravel.com**
-
 All reports will be reviewed and investigated promptly and fairly. The
 maintainer is obligated to respect the privacy and security of the
 reporter.
